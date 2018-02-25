@@ -1,0 +1,96 @@
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace 计算每个站点间的差距
+{
+     public class Program
+    {
+       
+        static void Main(string[] args)
+        {
+            List<Station> slist = sta_Read();
+
+            StreamWriter sw = new StreamWriter(new FileStream("../../../adj_value.txt", FileMode.OpenOrCreate));
+            Console.WriteLine("权重w1:");
+            string w1 = Console.ReadLine();
+            Console.WriteLine("权重w2:");
+            string w2 = Console.ReadLine();
+            string str = null ;
+            List<List<double>> list = new List<List<double>>();
+            for (int i = 0; i < 100; i++)
+            {
+                list.Add(new List<double>());
+                for (int j = 0; j < 100; j++)
+                {
+                    if (Data.pnt_voro[i][j] != 0 && i != j)//C#里面的if只能用bool类型，并不是非0就为true
+                    {
+                        var value = 1 / Math.Pow((double.Parse(w1) * pnt_dis_space(slist[i], slist[j], 1402.22583185249, 101378.18216510251) + double.Parse(w2) * pnt_dis_att(slist[i], slist[j])), 2);
+                        list[i].Add(value);
+                    }
+                    //str += 1 / Math.Pow((double.Parse(w1) * pnt_dis_space(slist[i], slist[j], 1402.22583185249, 101378.18216510251) + double.Parse(w2) * pnt_dis_att(slist[i], slist[j])), 2) + ",";
+                    else
+                    {
+                        list[i].Add(0);
+                    }
+                    //str += 0 + ",";
+                }
+                //str = str.TrimEnd(',');
+                //str += "\n";
+                Console.WriteLine(i);
+            }
+            //var ss = JsonConvert.SerializeObject(list);
+            //List<List<double>> d = JsonConvert.DeserializeObject < List<List<double>>>(ss);
+
+            sw.Write(JsonConvert.SerializeObject(list));
+            sw.Flush();//清除缓冲区
+            sw.Close();//关闭流
+           
+            Console.ReadKey();
+        }
+
+        private static List<Station> sta_Read()
+        {
+            string path = "../../../pnt_project.txt";
+            //读文件
+            StreamReader sr = new StreamReader(new FileStream(path, FileMode.Open));
+            //获取文件内容
+            List<Station> slist = sr.ReadToEnd().Split(new[] { "\n" }, StringSplitOptions.RemoveEmptyEntries).ToList().Select(line =>
+            {
+                string[] arr = line.Split(new[] { "\t" }, StringSplitOptions.RemoveEmptyEntries);
+                return new Station
+                {
+                    Id = int.Parse(arr[0]),
+                    Lng = double.Parse(arr[1]),
+                    Lat = double.Parse(arr[2])
+                };
+            }).ToList();
+            return slist;
+        }
+
+        /// <summary>
+        /// //计算两个站点间的距离差,归一化所有点间欧式距离：应该是求出所有点间的距离d，找到距离值最小的min,和最大的max，然后把所有距离跟新为(d-min)/max
+        /// </summary>
+        public static double pnt_dis_space(Station pnt1,Station pnt2,double min,double thetad)
+        {
+            return (Math.Sqrt(Math.Pow(pnt1.Lat - pnt2.Lng, 2) + Math.Pow(pnt1.Lat - pnt2.Lng, 2)) - min) / thetad;
+        }
+        /// <summary>
+        /// 计算两个站点间的属性差
+        /// </summary>
+        /// <param name="pnt1"></param>
+        /// <param name="pnt2"></param>
+        public static double  pnt_dis_att(Station pnt1, Station pnt2)
+        {
+            double dis = 0;//,mus= 0;
+            for (int i = 0; i < 5; i++)
+                //归一化后
+                dis += Math.Abs(Data.pnt_atttable[pnt1.Id - 1][i] - Data.pnt_atttable[pnt2.Id - 1][i]);
+            return Math.Sqrt(Math.Abs(dis));
+        }
+    }
+}
